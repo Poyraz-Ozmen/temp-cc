@@ -26,10 +26,17 @@ export const { auth, signIn, signOut } = NextAuth({
 });
 */
 
-
+/*
 import NextAuth from "next-auth"
 import Google from "next-auth/providers/google"
  
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [Google],
 })
+*/
+
+import NextAuth from "next-auth"
+import { config } from "./app/api/auth/[...nextauth]/route"
+
+export const { auth } = NextAuth(config)
+
