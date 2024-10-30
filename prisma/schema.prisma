@@ -1,0 +1,109 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id          Int        @id @default(autoincrement()) // Projeye özel benzersiz kimlik
+  name        String     // Proje adı
+  description String?    // Proje açıklaması (opsiyonel)
+  startDate   DateTime?  // Proje başlangıç tarihi
+  endDate     DateTime?  // Proje bitiş tarihi
+  status      String     // Proje durumu (örn. "Active", "Completed")
+  Team        Team[]     // Projeye ait takımlar
+  WorkUnit    WorkUnit[] // Proje içindeki iş birimleri
+}
+
+model Team {
+  id            Int      @id @default(autoincrement()) // Takıma özel benzersiz kimlik
+  name          String   // Takım adı
+  teamLeadId    Int      // Takım liderinin kullanıcı kimliği
+  teamLead      User     @relation(fields: [teamLeadId], references: [id]) // Takım lideri ilişkisi
+  employeeCount Int      // Takımdaki çalışan sayısı
+  order         Int      // Takım sırası
+  projectId     Int?     // İlgili proje kimliği (yabancı anahtar)
+  Project       Project? @relation(fields: [projectId], references: [id]) // İlgili proje ilişkisi
+}
+
+model ProjectDivision {
+  id        Int       @id @default(autoincrement()) // İş bölümüne özel kimlik
+  name      String    // İş bölümü adı
+  description String? // İş bölümü açıklaması (opsiyonel)
+  order     Int       // İş bölümü sırası
+  WorkUnit  WorkUnit[] // İş bölümü ile ilişkili iş birimleri
+}
+
+//sqlLight enum'ları desteklemiyor
+//enum Role {
+//  USER         // Normal kullanıcı
+//  PROJECTLEAD   // Proje lideri
+//  PROJECTMG    // Proje yöneticisi
+//  PROJECTOWNER  // Proje sahibi
+//  ADMIN         // Yönetici
+//}
+
+model AnnualReport {
+  id            Int             @id @default(autoincrement()) // Yıllık rapora özel kimlik
+  yearStart     DateTime        // Yıl başlangıç tarihi
+  yearEnd       DateTime        // Yıl bitiş tarihi
+  status        String          // Rapor durumu (örn. "Draft", "Finalized")
+  MonthlyReport MonthlyReport[] // Yıllık rapora bağlı aylık raporlar
+  userId        Int             // Kullanıcı kimliği (yabancı anahtar)
+  User          User            @relation(fields: [userId], references: [id]) // İlgili kullanıcı
+}
+
+model MonthlyReport {
+  id             Int             @id @default(autoincrement()) // Aylık rapora özel kimlik
+  monthStart     DateTime        // Ay başlangıç tarihi
+  monthEnd       DateTime        // Ay bitiş tarihi
+  completed      Boolean         // Tamamlanma durumu
+  comments       String?         // Ek açıklamalar (opsiyonel)
+  WeeklyReport   WeeklyReport[]  // Aylık rapora bağlı haftalık raporlar
+  annualReportId Int             // İlgili yıllık rapor kimliği (yabancı anahtar)
+  AnnualReport   AnnualReport    @relation(fields: [annualReportId], references: [id]) // İlgili yıllık rapor
+}
+
+model WorkUnit {
+  id                Int               @id @default(autoincrement()) // İş birimine özel kimlik
+  days              Float             // İş birimi için gereken gün sayısı
+  description       String?           // İş birimi açıklaması (opsiyonel)
+  status            String            // İş birimi durumu (örn. "In Progress", "Completed")
+  projectDivisionId Int               // İlgili iş bölümü kimliği (yabancı anahtar)
+  ProjectDivision   ProjectDivision   @relation(fields: [projectDivisionId], references: [id]) // İlgili iş bölümü
+  projectId         Int               // İlgili proje kimliği (yabancı anahtar)
+  Project           Project           @relation(fields: [projectId], references: [id]) // İlgili proje
+  weeklyReportid    Int
+  weeklyReport WeeklyReport @relation(fields: [weeklyReportid] ,references: [id])
+}
+
+model WeeklyReport {
+  id               Int              @id @default(autoincrement()) // Haftalık rapora özel kimlik
+  weekStart        DateTime         // Hafta başlangıç tarihi
+  weekEnd          DateTime         // Hafta bitiş tarihi
+  completed        Boolean          // Tamamlanma durumu
+  notes            String?          // Haftalık notlar (opsiyonel)
+  monthlyReportId  Int              // İlgili aylık rapor kimliği (yabancı anahtar)
+  MonthlyReport    MonthlyReport    @relation(fields: [monthlyReportId], references: [id]) // İlgili aylık rapor
+  WorkUnit         WorkUnit[]       // Haftalık rapora bağlı iş birimleri
+}
+
+
+model User {
+  id             Int             @id @default(autoincrement()) // Kullanıcıya özel kimlik
+  username       String          @unique // Kullanıcı adı (benzersiz)
+  email          String          @unique // E-posta adresi (benzersiz)
+  password       String          // Şifre (hashed)
+ // role           Role            // Kullanıcı rolü
+  isActive       Boolean         @default(true) // Kullanıcı aktif mi?
+  createdAt      DateTime        @default(now()) // Hesap oluşturulma tarihi
+  updatedAt      DateTime        @updatedAt // Hesap son güncellenme tarihi
+  teams          Team[]          // Kullanıcının dahil olduğu takımlar
+  annualReports  AnnualReport[]  // Kullanıcıya ait yıllık raporlar
+}
