@@ -1,14 +1,36 @@
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'; // Adjust the import path as necessary
-import { PrismaClient, ProjectDivision } from '@prisma/client';
-  import { YearMonthSelect } from '@/components/home/YearMonthSelect';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
+import { PrismaClient, Project, ProjectDivision } from '@prisma/client';
+import { YearMonthSelect } from '@/components/home/YearMonthSelect';
 import WeeklyAccordion from '@/components/home/WeeklyAccordion';
 
-export default async function Home() {
-  const prisma = new PrismaClient();
-  const project = await prisma.project.findMany();
-  const ProjectDivision = await prisma.projectDivision.findMany();
+// Create a singleton instance of PrismaClient
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined
+}
 
-  const createProjectDivision = async (input: ProjectDivision) => {
+const prisma = globalForPrisma.prisma ?? new PrismaClient()
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+
+export default async function Home() {
+  const project = await prisma.project.findMany({
+    include: {
+      Team: true,
+      WorkUnit: true,
+    },
+  });
+
+  const projectDivisions = await prisma.projectDivision.findMany({
+    include: {
+      WorkUnit: true,
+    },
+  });
+
+  const createProjectDivision = async (input: {
+    name: string;
+    description?: string | null;
+    order: number;
+  }) => {
     try {
       const newDivision = await prisma.projectDivision.create({
         data: {
@@ -21,15 +43,14 @@ export default async function Home() {
       return newDivision;
     } catch (error) {
       console.error('İş bölümü oluşturulurken hata oluştu:', error);
-      throw error; // Hatanın yönetimi için dışarıya fırlat
+      throw error;
     }
   };
-  
 
   return (
-    <div className="flex flex-col items-start p-4 h-screen"> {/* Full screen height */}
+    <div className="flex flex-col items-start p-4 h-screen">
       <YearMonthSelect />
-      <WeeklyAccordion proje={project} bolumler={ProjectDivision} />
+      <WeeklyAccordion proje={project} bolumler={projectDivisions} />
     </div>
   );
 }
